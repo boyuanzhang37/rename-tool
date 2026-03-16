@@ -1,0 +1,304 @@
+@echo off
+setlocal EnableDelayedExpansion
+title Advanced File Renamer
+color 0A
+
+set "target="
+set "filter=*"
+
+:choosefolder
+cls
+echo =========================================
+echo            ADVANCED FILE RENAMER
+echo =========================================
+echo.
+echo Current Folder: %target%
+echo File Filter: %filter%
+echo.
+echo 1. Enter folder path
+echo 2. Browse for folder
+echo 3. Set file type filter
+echo 4. Continue to rename menu
+echo 5. Exit
+echo.
+
+set /p choice=Select option:
+
+if "%choice%"=="1" goto manualpath
+if "%choice%"=="2" goto browse
+if "%choice%"=="3" goto filterset
+if "%choice%"=="4" goto menu
+if "%choice%"=="5" exit
+goto choosefolder
+
+
+:manualpath
+cls
+set /p target=Enter folder path:
+if not exist "%target%" (
+echo Folder not found
+pause
+goto choosefolder
+)
+goto choosefolder
+
+
+:browse
+for /f "delims=" %%i in ('powershell -command "Add-Type -AssemblyName System.Windows.Forms; $f = New-Object System.Windows.Forms.FolderBrowserDialog; if($f.ShowDialog() -eq 'OK'){ $f.SelectedPath }"') do set target=%%i
+goto choosefolder
+
+
+:filterset
+cls
+echo Example filters:
+echo *.jpg
+echo *.txt
+echo *  (all files)
+echo.
+set /p filter=Enter file filter:
+goto choosefolder
+
+
+:menu
+cls
+echo =========================================
+echo              RENAME MENU
+echo =========================================
+echo Folder: %target%
+echo Filter: %filter%
+echo.
+echo 1. Preview files
+echo 2. Add prefix
+echo 3. Add suffix
+echo 4. Remove characters from start
+echo 5. Remove characters from end
+echo 6. Replace text
+echo 7. Remove spaces
+echo 8. Auto number files
+echo 9. Change folder
+echo 0. Exit
+echo.
+
+set /p choice=Select option:
+
+if "%choice%"=="1" goto preview
+if "%choice%"=="2" goto prefix
+if "%choice%"=="3" goto suffix
+if "%choice%"=="4" goto removestart
+if "%choice%"=="5" goto removeend
+if "%choice%"=="6" goto replace
+if "%choice%"=="7" goto removespaces
+if "%choice%"=="8" goto autonumber
+if "%choice%"=="9" goto choosefolder
+if "%choice%"=="0" exit
+goto menu
+
+
+:preview
+cls
+echo Files found:
+pushd "%target%"
+dir /b %filter%
+popd
+pause
+goto menu
+
+
+:confirm
+echo.
+set /p confirm=Proceed with rename? (Y/N):
+if /i not "%confirm%"=="Y" (
+echo Operation cancelled
+pause
+goto menu
+)
+exit /b
+
+
+:prefix
+cls
+set /p text=Enter prefix:
+pushd "%target%"
+
+echo Preview:
+for %%f in (%filter%) do (
+echo %%f  ^>^>  %text%%%f
+)
+
+call :confirm
+
+for %%f in (%filter%) do (
+set "new=%text%%%f"
+if not exist "!new!" ren "%%f" "!new!"
+)
+
+popd
+echo Done
+pause
+goto menu
+
+
+:suffix
+cls
+set /p text=Enter suffix:
+pushd "%target%"
+
+echo Preview:
+for %%f in (%filter%) do (
+echo %%f  ^>^>  %%~nf%text%%%~xf
+)
+
+call :confirm
+
+for %%f in (%filter%) do (
+set "new=%%~nf%text%%%~xf"
+if not exist "!new!" ren "%%f" "!new!"
+)
+
+popd
+echo Done
+pause
+goto menu
+
+
+:removestart
+cls
+set /p num=Characters to remove:
+pushd "%target%"
+
+echo Preview:
+for %%f in (%filter%) do (
+set "name=%%~nf"
+set "ext=%%~xf"
+set "new=!name:~%num%!!ext!"
+echo %%f  ^>^>  !new!
+)
+
+call :confirm
+
+for %%f in (%filter%) do (
+set "name=%%~nf"
+set "ext=%%~xf"
+set "new=!name:~%num%!!ext!"
+if not exist "!new!" ren "%%f" "!new!"
+)
+
+popd
+echo Done
+pause
+goto menu
+
+
+:removeend
+cls
+set /p num=Characters to remove from end:
+pushd "%target%"
+
+echo Preview:
+for %%f in (%filter%) do (
+set "name=%%~nf"
+set "ext=%%~xf"
+set "new=!name:~0,-%num%!!ext!"
+echo %%f  ^>^>  !new!
+)
+
+call :confirm
+
+for %%f in (%filter%) do (
+set "name=%%~nf"
+set "ext=%%~xf"
+set "new=!name:~0,-%num%!!ext!"
+if not exist "!new!" ren "%%f" "!new!"
+)
+
+popd
+echo Done
+pause
+goto menu
+
+
+:replace
+cls
+set /p old=Text to replace:
+set /p new=Replace with:
+pushd "%target%"
+
+echo Preview:
+for %%f in (%filter%) do (
+set "name=%%~nf"
+set "ext=%%~xf"
+set "name=!name:%old%=%new%!"
+echo %%f  ^>^>  !name!!ext!
+)
+
+call :confirm
+
+for %%f in (%filter%) do (
+set "name=%%~nf"
+set "ext=%%~xf"
+set "name=!name:%old%=%new%!"
+if not exist "!name!!ext!" ren "%%f" "!name!!ext!"
+)
+
+popd
+echo Done
+pause
+goto menu
+
+
+:removespaces
+cls
+pushd "%target%"
+
+echo Preview:
+for %%f in (%filter%) do (
+set "name=%%~nf"
+set "ext=%%~xf"
+set "name=!name: =!"
+echo %%f  ^>^>  !name!!ext!
+)
+
+call :confirm
+
+for %%f in (%filter%) do (
+set "name=%%~nf"
+set "ext=%%~xf"
+set "name=!name: =!"
+if not exist "!name!!ext!" ren "%%f" "!name!!ext!"
+)
+
+popd
+echo Done
+pause
+goto menu
+
+
+:autonumber
+cls
+set /p prefix=Number prefix (optional):
+set count=1
+pushd "%target%"
+
+echo Preview:
+for %%f in (%filter%) do (
+set num=00!count!
+set num=!num:~-3!
+echo %%f  ^>^>  %prefix%!num!_%%~nf%%~xf
+set /a count+=1
+)
+
+call :confirm
+
+set count=1
+for %%f in (%filter%) do (
+set num=00!count!
+set num=!num:~-3!
+set new=%prefix%!num!_%%~nf%%~xf
+if not exist "!new!" ren "%%f" "!new!"
+set /a count+=1
+)
+
+popd
+echo Done
+pause
+goto menu
